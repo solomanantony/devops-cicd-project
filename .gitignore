@@ -7,4 +7,3 @@ terraform.tfstate.*
 
 # Monitoring stack cloned locally
 kube-prometheus/
-monitoring/
