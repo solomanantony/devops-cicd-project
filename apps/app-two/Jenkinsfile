@@ -136,7 +136,6 @@ pipeline {
             --data '{"text":"❌ ${APP_NAME} deployment FAILED and rolled back! Build #${BUILD_NUMBER} Commit ${GIT_COMMIT} Check ${BUILD_URL}"}'
         """
     }
-}
         always {
             sh "docker rmi ${FULL_IMAGE} || true"
         }
