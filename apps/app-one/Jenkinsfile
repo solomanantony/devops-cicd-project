@@ -131,31 +131,31 @@ pipeline {
         }
     }
 
-    post {
-        success {
-            echo "Deployment successful!"
-            sh '''
-                curl -X POST ${SLACK_WEBHOOK_URL} \
-                    -H 'Content-type: application/json' \
-                    --data "{\"text\": \"✅ *${APP_NAME}* deployed successfully!\nBuild: #${BUILD_NUMBER}\nCommit: ${GIT_COMMIT}\"}"
-            '''
-        }
+   post {
+    success {
+        echo "Deployment successful!"
+        sh """
+            curl -X POST '${SLACK_WEBHOOK_URL}' \
+            -H 'Content-type: application/json' \
+            --data '{"text":"✅ ${APP_NAME} deployed successfully! Build #${BUILD_NUMBER} Commit ${GIT_COMMIT}"}'
+        """
+    }
 
-        failure {
-            echo "Deployment failed — attempting rollback"
-            sh '''
-                aws eks update-kubeconfig \
-                    --region ${AWS_REGION} \
-                    --name ${EKS_CLUSTER_NAME} || true
+    failure {
+        echo "Deployment failed — attempting rollback"
+        sh """
+            aws eks update-kubeconfig \
+                --region ${AWS_REGION} \
+                --name ${EKS_CLUSTER_NAME} || true
 
-                # Rollback to previous ReplicaSet
-                kubectl rollout undo deployment/${APP_NAME} -n ${NAMESPACE} || true
+            kubectl rollout undo deployment/${APP_NAME} -n ${NAMESPACE} || true
 
-                curl -X POST ${SLACK_WEBHOOK_URL} \
-                    -H 'Content-type: application/json' \
-                    --data "{\"text\": \"❌ *${APP_NAME}* deployment FAILED & rolled back!\nBuild: #${BUILD_NUMBER}\nCommit: ${GIT_COMMIT}\nCheck: ${BUILD_URL}\"}"
-            '''
-        }
+            curl -X POST '${SLACK_WEBHOOK_URL}' \
+            -H 'Content-type: application/json' \
+            --data '{"text":"❌ ${APP_NAME} deployment FAILED and rolled back! Build #${BUILD_NUMBER} Commit ${GIT_COMMIT} Check ${BUILD_URL}"}'
+        """
+    }
+}
 
         always {
             echo "Cleaning up local Docker images..."

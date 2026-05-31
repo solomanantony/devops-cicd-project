@@ -113,22 +113,30 @@ pipeline {
     }
 
     post {
-        success {
-            sh '''
-                curl -X POST ${SLACK_WEBHOOK_URL} \
-                    -H 'Content-type: application/json' \
-                    --data "{\"text\": \"✅ *${APP_NAME}* deployed! Build #${BUILD_NUMBER}\"}"
-            '''
-        }
-        failure {
-            sh '''
-                aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME} || true
-                kubectl rollout undo deployment/${APP_NAME} -n ${NAMESPACE} || true
-                curl -X POST ${SLACK_WEBHOOK_URL} \
-                    -H 'Content-type: application/json' \
-                    --data "{\"text\": \"❌ *${APP_NAME}* FAILED & rolled back! Build #${BUILD_NUMBER}\"}"
-            '''
-        }
+    success {
+        echo "Deployment successful!"
+        sh """
+            curl -X POST '${SLACK_WEBHOOK_URL}' \
+            -H 'Content-type: application/json' \
+            --data '{"text":"✅ ${APP_NAME} deployed successfully! Build #${BUILD_NUMBER} Commit ${GIT_COMMIT}"}'
+        """
+    }
+
+    failure {
+        echo "Deployment failed — attempting rollback"
+        sh """
+            aws eks update-kubeconfig \
+                --region ${AWS_REGION} \
+                --name ${EKS_CLUSTER_NAME} || true
+
+            kubectl rollout undo deployment/${APP_NAME} -n ${NAMESPACE} || true
+
+            curl -X POST '${SLACK_WEBHOOK_URL}' \
+            -H 'Content-type: application/json' \
+            --data '{"text":"❌ ${APP_NAME} deployment FAILED and rolled back! Build #${BUILD_NUMBER} Commit ${GIT_COMMIT} Check ${BUILD_URL}"}'
+        """
+    }
+}
         always {
             sh "docker rmi ${FULL_IMAGE} || true"
         }
