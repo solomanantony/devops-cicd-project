@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Store Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d0f0e;
+      --surface:   #161918;
+      --card:      #1c1f1e;
+      --border:    rgba(255,255,255,0.07);
+      --border2:   rgba(255,255,255,0.13);
+      --text:      #e8ede9;
+      --muted:     #7a8a7d;
+      --accent:    #4ade80;
+      --accent-dk: #166534;
+      --accent-bg: rgba(74,222,128,0.08);
+      --amber:     #fbbf24;
+      --amber-bg:  rgba(251,191,36,0.08);
+      --sky:       #38bdf8;
+      --sky-bg:    rgba(56,189,248,0.08);
+      --danger:    #f87171;
+      --danger-bg: rgba(248,113,113,0.08);
+      --font-sans: 'Figtree', sans-serif;
+      --font-serif:'DM Serif Display', serif;
+      --font-mono: 'DM Mono', monospace;
+      --radius:    10px;
+      --radius-lg: 16px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── Layout ── */
+    .shell { display: flex; min-height: 100vh; }
+
+    nav {
+      width: 220px;
+      flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 28px 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+    }
+
+    .logo {
+      padding: 0 24px 28px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+    .logo-mark {
+      font-family: var(--font-serif);
+      font-size: 22px;
+      color: var(--text);
+      letter-spacing: -0.3px;
+    }
+    .logo-mark span { color: var(--accent); }
+    .logo-sub {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 24px;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      border-left: 2px solid transparent;
+      transition: all 0.15s;
+      user-select: none;
+    }
+    .nav-item:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+    .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-bg); }
+    .nav-icon { font-size: 17px; flex-shrink: 0; }
+
+    .nav-section {
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 16px 24px 6px;
+      font-family: var(--font-mono);
+    }
+
+    .status-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+    .status-dot.offline { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+    .status-dot.loading { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+
+    main {
+      flex: 1;
+      overflow: auto;
+      padding: 36px 40px;
+    }
+
+    /* ── Page header ── */
+    .page-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 32px;
+    }
+    .page-title {
+      font-family: var(--font-serif);
+      font-size: 30px;
+      color: var(--text);
+      line-height: 1.2;
+    }
+    .page-title em { color: var(--accent); font-style: italic; }
+    .page-sub { font-size: 13px; color: var(--muted); margin-top: 4px; font-family: var(--font-mono); }
+
+    .refresh-btn {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: var(--card);
+      border: 1px solid var(--border2);
+      color: var(--muted);
+      padding: 8px 16px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-family: var(--font-sans);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .refresh-btn:hover { color: var(--text); border-color: var(--accent); }
+    .refresh-btn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+
+    /* ── Stat cards ── */
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px 22px;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    }
+    .stat-card.green::before  { background: var(--accent); }
+    .stat-card.amber::before  { background: var(--amber); }
+    .stat-card.sky::before    { background: var(--sky); }
+    .stat-card.danger::before { background: var(--danger); }
+
+    .stat-label { font-size: 11px; color: var(--muted); font-family: var(--font-mono); letter-spacing: 0.6px; text-transform: uppercase; margin-bottom: 10px; }
+    .stat-value { font-family: var(--font-serif); font-size: 32px; color: var(--text); line-height: 1; }
+    .stat-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      margin-top: 8px;
+      padding: 3px 8px;
+      border-radius: 20px;
+    }
+    .stat-badge.green  { background: var(--accent-bg); color: var(--accent); }
+    .stat-badge.amber  { background: var(--amber-bg);  color: var(--amber); }
+    .stat-badge.sky    { background: var(--sky-bg);    color: var(--sky); }
+    .stat-badge.danger { background: var(--danger-bg); color: var(--danger); }
+
+    /* ── Panels ── */
+    .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--border);
+    }
+    .panel-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: 0.2px;
+    }
+    .panel-count {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--muted);
+      background: rgba(255,255,255,0.05);
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+
+    .panel-body { padding: 8px 0; }
+
+    /* ── User rows ── */
+    .user-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 22px;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.12s;
+    }
+    .user-row:last-child { border-bottom: none; }
+    .user-row:hover { background: rgba(255,255,255,0.025); }
+
+    .avatar {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 600;
+      flex-shrink: 0;
+      font-family: var(--font-mono);
+    }
+    .avatar.green  { background: var(--accent-bg); color: var(--accent); border: 1px solid rgba(74,222,128,0.2); }
+    .avatar.sky    { background: var(--sky-bg);    color: var(--sky);    border: 1px solid rgba(56,189,248,0.2); }
+    .avatar.amber  { background: var(--amber-bg);  color: var(--amber);  border: 1px solid rgba(251,191,36,0.2); }
+
+    .user-info { flex: 1; min-width: 0; }
+    .user-name { font-size: 14px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-email { font-size: 12px; color: var(--muted); font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .role-badge {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      padding: 3px 9px;
+      border-radius: 20px;
+      flex-shrink: 0;
+    }
+    .role-badge.admin { background: rgba(251,191,36,0.12); color: var(--amber); border: 1px solid rgba(251,191,36,0.2); }
+    .role-badge.user  { background: rgba(255,255,255,0.05); color: var(--muted); border: 1px solid var(--border); }
+
+    /* ── Product rows ── */
+    .product-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 22px;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.12s;
+    }
+    .product-row:last-child { border-bottom: none; }
+    .product-row:hover { background: rgba(255,255,255,0.025); }
+
+    .product-icon {
+      width: 38px; height: 38px;
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      flex-shrink: 0;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+    }
+
+    .product-info { flex: 1; min-width: 0; }
+    .product-name { font-size: 14px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .product-cat  { font-size: 12px; color: var(--muted); font-family: var(--font-mono); }
+
+    .product-meta { text-align: right; flex-shrink: 0; }
+    .product-price { font-size: 14px; font-weight: 600; color: var(--accent); font-family: var(--font-mono); }
+    .product-stock { font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+    .product-stock.low { color: var(--danger); }
+
+    /* ── Service health bar ── */
+    .health-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+    }
+    .health-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: var(--muted);
+    }
+    .health-pill .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--muted);
+    }
+    .health-pill.ok    { border-color: rgba(74,222,128,0.25); }
+    .health-pill.ok .dot { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+    .health-pill.ok .label { color: var(--accent); }
+    .health-pill.err   { border-color: rgba(248,113,113,0.25); }
+    .health-pill.err .dot { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+    .health-pill.err .label { color: var(--danger); }
+
+    /* ── Loading / error states ── */
+    .skeleton { animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:0.8} }
+
+    .skel-row {
+      display: flex; align-items: center; gap: 14px;
+      padding: 12px 22px; border-bottom: 1px solid var(--border);
+    }
+    .skel-circle { width:38px;height:38px;border-radius:50%;background:var(--border2);flex-shrink:0; }
+    .skel-lines  { flex:1; }
+    .skel-line   { height:10px;border-radius:4px;background:var(--border2);margin-bottom:6px; }
+    .skel-line.short { width:55%; }
+
+    .error-msg {
+      display: flex; align-items: center; gap: 10px;
+      padding: 16px 22px; color: var(--danger);
+      font-size: 13px; font-family: var(--font-mono);
+    }
+
+    /* ── Empty state ── */
+    .empty {
+      text-align: center; padding: 32px 22px;
+      color: var(--muted); font-size: 13px;
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+    .fade-in { animation: fadeIn 0.35s ease forwards; }
+
+    /* ── Responsive ── */
+    @media (max-width: 1100px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 800px) {
+      nav { display: none; }
+      main { padding: 24px 20px; }
+      .panels { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="shell">
+  <!-- Sidebar -->
+  <nav>
+    <div class="logo">
+      <div class="logo-mark">store<span>.</span>io</div>
+      <div class="logo-sub">dashboard v2</div>
+    </div>
+
+    <div class="nav-section">overview</div>
+    <div class="nav-item active" onclick="setPage('dashboard')">
+      <span class="nav-icon">⊞</span> Dashboard
+    </div>
+
+    <div class="nav-section">services</div>
+    <div class="nav-item" id="nav-users" onclick="setPage('users')">
+      <span class="nav-icon">◎</span> Users
+      <span class="status-dot loading" id="dot-users"></span>
+    </div>
+    <div class="nav-item" id="nav-products" onclick="setPage('products')">
+      <span class="nav-icon">◈</span> Products
+      <span class="status-dot loading" id="dot-products"></span>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <main id="main">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Good to see you, <em>Admin</em></div>
+        <div class="page-sub" id="last-updated">fetching data…</div>
+      </div>
+      <button class="refresh-btn" onclick="loadAll()">
+        <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.02"/></svg>
+        Refresh
+      </button>
+    </div>
+
+    <!-- Health pills -->
+    <div class="health-bar" id="health-bar">
+      <div class="health-pill" id="hp-users">
+        <span class="dot"></span><span>user-service</span><span class="label">…</span>
+      </div>
+      <div class="health-pill" id="hp-products">
+        <span class="dot"></span><span>product-service</span><span class="label">…</span>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat-card green">
+        <div class="stat-label">total users</div>
+        <div class="stat-value" id="stat-users">—</div>
+        <div class="stat-badge green">● live</div>
+      </div>
+      <div class="stat-card sky">
+        <div class="stat-label">total products</div>
+        <div class="stat-value" id="stat-products">—</div>
+        <div class="stat-badge sky">● live</div>
+      </div>
+      <div class="stat-card amber">
+        <div class="stat-label">total value</div>
+        <div class="stat-value" id="stat-value">—</div>
+        <div class="stat-badge amber">● inventory</div>
+      </div>
+      <div class="stat-card danger">
+        <div class="stat-label">low stock</div>
+        <div class="stat-value" id="stat-low">—</div>
+        <div class="stat-badge danger">● items &lt; 25</div>
+      </div>
+    </div>
+
+    <!-- Panels -->
+    <div class="panels">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Users</span>
+          <span class="panel-count" id="users-count">—</span>
+        </div>
+        <div class="panel-body" id="users-panel">
+          <div id="users-list">
+            <!-- skeleton -->
+            <div class="skel-row skeleton"><div class="skel-circle"></div><div class="skel-lines"><div class="skel-line"></div><div class="skel-line short"></div></div></div>
+            <div class="skel-row skeleton"><div class="skel-circle"></div><div class="skel-lines"><div class="skel-line"></div><div class="skel-line short"></div></div></div>
+            <div class="skel-row skeleton"><div class="skel-circle"></div><div class="skel-lines"><div class="skel-line"></div><div class="skel-line short"></div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Products</span>
+          <span class="panel-count" id="products-count">—</span>
+        </div>
+        <div class="panel-body" id="products-panel">
+          <div id="products-list">
+            <div class="skel-row skeleton"><div class="skel-circle" style="border-radius:8px"></div><div class="skel-lines"><div class="skel-line"></div><div class="skel-line short"></div></div></div>
+            <div class="skel-row skeleton"><div class="skel-circle" style="border-radius:8px"></div><div class="skel-lines"><div class="skel-line"></div><div class="skel-line short"></div></div></div>
+            <div class="skel-row skeleton"><div class="skel-circle" style="border-radius:8px"></div><div class="skel-lines"><div class="skel-line"></div><div class="skel-line short"></div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  // ── CONFIG — point these at your actual service URLs ────────────────────────
+  const USER_SERVICE_URL    = window.ENV_USER_SERVICE_URL    || 'http://localhost:5001';
+  const PRODUCT_SERVICE_URL = window.ENV_PRODUCT_SERVICE_URL || 'http://localhost:5002';
+
+  const AVATAR_COLORS  = ['green', 'sky', 'amber'];
+  const PRODUCT_ICONS  = { electronics: '⬡', peripherals: '⬢', displays: '▣', default: '◈' };
+
+  function initials(name) {
+    return name.split(' ').slice(0,2).map(w => w[0]).join('').toUpperCase();
+  }
+
+  async function fetchJSON(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`${res.status}`);
+    return res.json();
+  }
+
+  async function checkHealth(serviceUrl, pillId, dotId) {
+    const pill = document.getElementById(pillId);
+    const dot  = document.getElementById(dotId);
+    try {
+      const data = await fetchJSON(`${serviceUrl}/health`);
+      const ok   = data.status === 'ok';
+      pill.className = `health-pill ${ok ? 'ok' : 'err'}`;
+      pill.querySelector('.label').textContent = ok ? 'healthy' : 'degraded';
+      dot.className  = `status-dot ${ok ? '' : 'offline'}`;
+    } catch {
+      pill.className = 'health-pill err';
+      pill.querySelector('.label').textContent = 'unreachable';
+      dot.className  = 'status-dot offline';
+    }
+  }
+
+  async function loadUsers() {
+    const el = document.getElementById('users-list');
+    try {
+      // Try /users/detail first for rich data, fallback to /users
+      let users;
+      try {
+        const detail = await fetchJSON(`${USER_SERVICE_URL}/users/detail`);
+        users = detail.users;
+      } catch {
+        const simple = await fetchJSON(`${USER_SERVICE_URL}/users`);
+        users = (simple.users || []).map((name, i) => ({ id: `u${i+1}`, name, email: `${name}@example.com`, role: 'user' }));
+      }
+
+      document.getElementById('stat-users').textContent  = users.length;
+      document.getElementById('users-count').textContent = `${users.length} members`;
+
+      if (!users.length) { el.innerHTML = '<div class="empty">No users found</div>'; return; }
+
+      el.innerHTML = '';
+      users.forEach((u, i) => {
+        const color = AVATAR_COLORS[i % AVATAR_COLORS.length];
+        const row   = document.createElement('div');
+        row.className = 'user-row fade-in';
+        row.style.animationDelay = `${i * 60}ms`;
+        row.innerHTML = `
+          <div class="avatar ${color}">${initials(u.name || u)}</div>
+          <div class="user-info">
+            <div class="user-name">${u.name || u}</div>
+            <div class="user-email">${u.email || ''}</div>
+          </div>
+          <span class="role-badge ${u.role === 'admin' ? 'admin' : 'user'}">${u.role || 'user'}</span>
+        `;
+        el.appendChild(row);
+      });
+    } catch (err) {
+      document.getElementById('stat-users').textContent = '!';
+      el.innerHTML = `<div class="error-msg">⚠ ${err.message}</div>`;
+    }
+  }
+
+  async function loadProducts() {
+    const el = document.getElementById('products-list');
+    try {
+      let products;
+      try {
+        const detail = await fetchJSON(`${PRODUCT_SERVICE_URL}/products/detail`);
+        products = detail.products;
+      } catch {
+        const simple = await fetchJSON(`${PRODUCT_SERVICE_URL}/products`);
+        products = (simple.products || []).map((name, i) => ({ id: `p${i+1}`, name, category: 'general', price: 0, stock: 0 }));
+      }
+
+      document.getElementById('stat-products').textContent = products.length;
+      document.getElementById('products-count').textContent = `${products.length} items`;
+
+      const totalValue = products.reduce((s, p) => s + (p.price || 0) * (p.stock || 0), 0);
+      const lowStock   = products.filter(p => p.stock > 0 && p.stock < 25).length;
+      document.getElementById('stat-value').textContent = totalValue > 0
+        ? '$' + totalValue.toLocaleString('en-US', {maximumFractionDigits: 0})
+        : '—';
+      document.getElementById('stat-low').textContent = lowStock;
+
+      if (!products.length) { el.innerHTML = '<div class="empty">No products found</div>'; return; }
+
+      el.innerHTML = '';
+      products.forEach((p, i) => {
+        const icon    = PRODUCT_ICONS[p.category] || PRODUCT_ICONS.default;
+        const isLow   = p.stock > 0 && p.stock < 25;
+        const row     = document.createElement('div');
+        row.className = 'product-row fade-in';
+        row.style.animationDelay = `${i * 60}ms`;
+        row.innerHTML = `
+          <div class="product-icon">${icon}</div>
+          <div class="product-info">
+            <div class="product-name">${p.name}</div>
+            <div class="product-cat">${p.category || 'general'}</div>
+          </div>
+          <div class="product-meta">
+            <div class="product-price">${p.price ? '$' + Number(p.price).toFixed(2) : '—'}</div>
+            <div class="product-stock ${isLow ? 'low' : ''}">${p.stock != null ? p.stock + ' in stock' : ''}</div>
+          </div>
+        `;
+        el.appendChild(row);
+      });
+    } catch (err) {
+      document.getElementById('stat-products').textContent = '!';
+      el.innerHTML = `<div class="error-msg">⚠ ${err.message}</div>`;
+    }
+  }
+
+  async function loadAll() {
+    document.getElementById('last-updated').textContent = 'refreshing…';
+    await Promise.all([
+      checkHealth(USER_SERVICE_URL,    'hp-users',    'dot-users'),
+      checkHealth(PRODUCT_SERVICE_URL, 'hp-products', 'dot-products'),
+      loadUsers(),
+      loadProducts(),
+    ]);
+    document.getElementById('last-updated').textContent =
+      'last updated ' + new Date().toLocaleTimeString();
+  }
+
+  function setPage(page) {
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    document.getElementById(`nav-${page === 'dashboard' ? 'users' : page}`)?.classList.add('active');
+  }
+
+  loadAll();
+  // Auto-refresh every 60 seconds
+  setInterval(loadAll, 60_000);
+</script>
+</body>
+</html>

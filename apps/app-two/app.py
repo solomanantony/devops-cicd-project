@@ -12,7 +12,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "https://your-s3-bucket.s3-website.amazonaws.com"}})
+CORS(app, resources={r"/*": {"origins": "http://soloman-devops-cicd.s3-website.ap-south-2.amazonaws.com"}})
 
 START_TIME = time.time()
 request_count = {"total": 0, "errors": 0}
