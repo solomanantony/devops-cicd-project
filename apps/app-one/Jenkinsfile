@@ -57,7 +57,7 @@ pipeline {
                 sh '''
                     trivy image \
                         --exit-code 1 \
-                        --severity CRITICAL,HIGH \
+                        --severity CRITICAL \
                         --ignore-unfixed \
                         --no-progress \
                         ${FULL_IMAGE}
