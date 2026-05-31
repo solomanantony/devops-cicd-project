@@ -14,10 +14,10 @@ terraform {
 
   # S3 backend 
   backend "s3" {
-    bucket         = "devops-project-tfstate"
+    bucket         = "devops-project-tfstate-soloman"
     key            = "eks/terraform.tfstate"
     region         = "ap-south-2"
-    dynamodb_table = "terraform-lock"
+    dynamodb_table = "terraform-lock-soloman"
     encrypt        = true
   }
 }
