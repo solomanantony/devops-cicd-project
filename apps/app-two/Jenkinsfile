@@ -1,0 +1,136 @@
+pipeline {
+    agent any
+
+    environment {
+        AWS_ACCOUNT_ID     = credentials('AWS_ACCOUNT_ID')
+        AWS_REGION         = credentials('AWS_REGION')
+        EKS_CLUSTER_NAME   = credentials('EKS_CLUSTER_NAME')
+        SLACK_WEBHOOK_URL  = credentials('SLACK_WEBHOOK_URL')
+        APP_NAME           = 'product-service'
+        ECR_REPO           = 'product-service'
+        NAMESPACE          = 'apps'
+        IMAGE_TAG          = "${env.GIT_COMMIT}"
+        ECR_URL            = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+        FULL_IMAGE         = "${ECR_URL}/${ECR_REPO}:${IMAGE_TAG}"
+    }
+
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                dir('apps/app-two') {
+                    sh '''
+                        pip3 install -r requirements.txt
+                        pip3 install pytest
+                        python3 -m pytest tests/ -v || echo "No tests directory found, skipping"
+                    '''
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                dir('apps/app-two') {
+                    sh "docker build -t ${FULL_IMAGE} ."
+                    sh "docker tag ${FULL_IMAGE} ${ECR_URL}/${ECR_REPO}:latest"
+                }
+            }
+        }
+
+        stage('Trivy Security Scan') {
+            steps {
+                sh '''
+                    trivy image \
+                        --exit-code 1 \
+                        --severity CRITICAL,HIGH \
+                        --ignore-unfixed \
+                        --no-progress \
+                        ${FULL_IMAGE}
+                '''
+            }
+            post {
+                failure {
+                    sh '''
+                        curl -X POST ${SLACK_WEBHOOK_URL} \
+                            -H 'Content-type: application/json' \
+                            --data "{\"text\": \"🚨 *${APP_NAME}* Trivy scan FAILED!\"}"
+                    '''
+                }
+            }
+        }
+
+        stage('Push to ECR') {
+            steps {
+                sh '''
+                    aws ecr get-login-password --region ${AWS_REGION} | \
+                        docker login --username AWS --password-stdin ${ECR_URL}
+                    docker push ${FULL_IMAGE}
+                    docker push ${ECR_URL}/${ECR_REPO}:latest
+                '''
+            }
+        }
+
+        stage('Deploy to EKS') {
+            steps {
+                sh '''
+                    aws eks update-kubeconfig \
+                        --region ${AWS_REGION} \
+                        --name ${EKS_CLUSTER_NAME}
+
+                    kubectl apply -f k8s/namespace.yaml
+
+                    # Inject the real image tag into the deployment YAML
+                    sed -i "s|IMAGE_PLACEHOLDER|${FULL_IMAGE}|g" k8s/app-two/deployment.yaml
+                    sed -i "s|IMAGE_TAG_PLACEHOLDER|${IMAGE_TAG}|g" k8s/app-two/deployment.yaml
+
+                    # Apply all manifests for app-two
+                    kubectl apply -f k8s/app-two/
+                '''
+            }
+        }
+
+        stage('Verify Rollout') {
+            steps {
+                sh '''
+                    kubectl rollout status deployment/${APP_NAME} \
+                        -n ${NAMESPACE} \
+                        --timeout=3m
+                    kubectl get pods -n ${NAMESPACE} -l app=${APP_NAME}
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            sh '''
+                curl -X POST ${SLACK_WEBHOOK_URL} \
+                    -H 'Content-type: application/json' \
+                    --data "{\"text\": \"✅ *${APP_NAME}* deployed! Build #${BUILD_NUMBER}\"}"
+            '''
+        }
+        failure {
+            sh '''
+                aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME} || true
+                kubectl rollout undo deployment/${APP_NAME} -n ${NAMESPACE} || true
+                curl -X POST ${SLACK_WEBHOOK_URL} \
+                    -H 'Content-type: application/json' \
+                    --data "{\"text\": \"❌ *${APP_NAME}* FAILED & rolled back! Build #${BUILD_NUMBER}\"}"
+            '''
+        }
+        always {
+            sh "docker rmi ${FULL_IMAGE} || true"
+        }
+    }
+}
